@@ -1,80 +1,121 @@
 # Internet Redactor
 
-Internet Redactor is a cross-platform desktop application (Mac and Windows) built with **TypeScript** and **Electron**. The goal of the project is to help people reclaim their privacy by identifying and removing user-generated content from websites they have used over time.
+Internet Redactor is a cross-platform desktop application (macOS + Windows) built with **Electron**, **React**, and **strict TypeScript**.
 
-## Project Intentions
+## Core Product Goal
 
-The intention behind Internet Redactor is to make privacy actions practical for everyday users. Many people have years of posts, comments, media uploads, and account activity spread across multiple services. Manually removing that content is often tedious and inconsistent.
+The app helps users redact personal historical content (posts/comments) from supported websites with a **security-first execution model**:
 
-Internet Redactor is being developed to:
+1. Prefer **official site APIs** for preview + deletion.
+2. Use **browser automation only as a fallback** for websites without robust APIs.
+3. Keep destructive actions in the Electron **main process**, not the renderer.
 
-- Provide a user-friendly way to connect supported websites.
-- Help users discover previously submitted content (posts, comments, videos, and more).
-- Support bulk and selective redaction workflows.
-- Prioritize privacy-conscious architecture and transparent behavior.
-- Reduce the amount of personal data publicly exposed across online platforms.
+## Architecture & Security Defaults
 
-## Core Beta Direction
+- Package manager: **pnpm**
+- Frontend tooling: **Vite + React**
+- TypeScript: **strict mode ON**
+- Tests: **Vitest** (unit/integration), **Playwright** (fallback automation E2E)
+- Lint/format: **ESLint + Prettier**
+- Token storage: **OS-protected secure storage** via `keytar` (Keychain/DPAPI-backed)
+- Electron BrowserWindow defaults:
+  - `contextIsolation: true`
+  - `nodeIntegration: false`
+  - `sandbox: true`
+  - `webSecurity: true`
+  - `allowRunningInsecureContent: false`
+- IPC is allowlisted and origin-validated.
+- No arbitrary embedded website views in the UI.
 
-The upcoming beta is focused on proving a safe, clear, and reliable redaction workflow.
+## Repository Layout
 
-Planned beta capabilities include:
+```text
+.
+├── apps
+│   └── desktop
+│       ├── package.json
+│       ├── playwright.config.ts
+│       ├── src
+│       │   ├── main
+│       │   │   └── index.ts
+│       │   ├── preload
+│       │   │   └── index.ts
+│       │   └── renderer
+│       │       ├── index.html
+│       │       └── src
+│       │           ├── App.tsx
+│       │           ├── components
+│       │           │   └── SiteSelector.tsx
+│       │           ├── global.d.ts
+│       │           ├── main.tsx
+│       │           └── styles
+│       │               └── app.css
+│       ├── tsconfig.json
+│       ├── vite.config.ts
+│       ├── vite.main.config.ts
+│       ├── vite.preload.config.ts
+│       └── vitest.config.ts
+├── packages
+│   ├── connectors
+│   │   ├── package.json
+│   │   └── src
+│   │       ├── connectors
+│   │       │   ├── legacyForumConnector.ts
+│   │       │   └── redditConnector.ts
+│   │       ├── index.ts
+│   │       ├── registry.test.ts
+│   │       ├── registry.ts
+│   │       └── types.ts
+│   ├── core
+│   │   ├── package.json
+│   │   └── src
+│   │       ├── index.test.ts
+│   │       └── index.ts
+│   └── shared
+│       ├── package.json
+│       └── src
+│           ├── http
+│           │   └── apiClient.ts
+│           ├── index.ts
+│           ├── security
+│           │   └── secureStore.ts
+│           ├── types.ts
+│           └── validation
+│               ├── ipc.test.ts
+│               └── ipc.ts
+├── tests
+│   └── e2e
+│       └── legacy-forum.spec.ts
+├── eslint.config.js
+├── package.json
+├── pnpm-workspace.yaml
+├── tsconfig.base.json
+└── .prettierrc.json
+```
 
-- Cross-platform desktop support for macOS and Windows.
-- A guided setup experience for linking supported accounts.
-- Website-specific redaction modules for initial platform coverage (starting with Reddit, Facebook, and YouTube).
-- Progress tracking, action history, and clear status messaging.
-- Foundational privacy and security controls for local user data.
+## High-Level Flow
 
-## Initial Supported Websites
+1. User chooses a supported site in the React UI.
+2. Renderer calls a minimal preload bridge API.
+3. Main process validates IPC origin + payload schema.
+4. Main process loads OAuth session from secure OS storage.
+5. Connector executes preview/delete with official API when available.
+6. Fallback connector path is isolated for Playwright-based automation tests.
 
-The first release wave will support:
+## Commands
 
-- Reddit
-- Facebook
-- YouTube
+From repo root:
 
-## Milestones
+- `pnpm dev` – run renderer + Electron in development.
+- `pnpm build` – build all packages/apps.
+- `pnpm test` – run all Vitest tests.
+- `pnpm test:e2e` – run Playwright fallback tests.
+- `pnpm lint` – run ESLint across workspaces.
+- `pnpm format` – format with Prettier.
 
-### Milestone 1 — Foundation & Architecture
+## Current Connector Notes
 
-- Initialize Electron + TypeScript application structure.
-- Establish secure credential/session handling strategy.
-- Define plugin/module interface for website integrations.
-- Implement baseline logging and diagnostics (privacy-safe).
+- `reddit`: official API connector scaffold for preview/delete.
+- `legacy-forum`: automation-fallback connector scaffold (for sites lacking APIs).
 
-### Milestone 2 — Account Connection & Discovery
-
-- Build onboarding and account connection flows.
-- Add content discovery engine for the first supported websites (Reddit, Facebook, and YouTube).
-- Display discovered items in a reviewable queue.
-- Implement robust error reporting for failed discovery operations.
-
-### Milestone 3 — Redaction Execution Engine
-
-- Build a redaction engine capable of selective and bulk actions.
-- Add safeguards (confirmation prompts, dry-run mode where possible).
-- Implement retry and resume behavior for long-running operations.
-- Add operation summaries for transparency.
-
-### Milestone 4 — Beta Readiness
-
-- Polish UX for clarity, accessibility, and trust.
-- Add settings for privacy preferences and data retention controls.
-- Expand platform compatibility testing across Mac and Windows.
-- Prepare beta distribution process, documentation, and release notes.
-
-### Milestone 5 — Post-Beta Expansion
-
-- Incorporate beta feedback into usability and reliability improvements.
-- Expand supported website integrations.
-- Improve automation resilience as third-party website flows change.
-- Publish a public roadmap and contribution guidelines.
-
-## Project Status
-
-Internet Redactor is currently in active development. A beta release is planned soon.
-
-## Vision
-
-Internet Redactor aims to become a dependable, privacy-first companion for people who want meaningful control over their digital history.
+> Add site-specific OAuth/OpenID provider configs and scopes before production use.
